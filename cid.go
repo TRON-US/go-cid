@@ -520,6 +520,10 @@ func (c Cid) Prefix() Prefix {
 	}
 }
 
+func NewCid(s string) *Cid {
+	return &Cid{str: s}
+}
+
 // Prefix represents all the metadata of a Cid,
 // that is, the Version, the Codec, the Multihash type
 // and the Multihash length. It does not contains
