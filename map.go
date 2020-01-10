@@ -42,10 +42,12 @@ func (m *Map) Remove(c Cid) {
 	delete(m.CidMap, c)
 }
 
-// IsExpired returns whether the entry of the given `c' is expired.
-// This method assumes the given `c` is an existing key of "m".
+// IsExpired returns true if the entry of the given `c' is expired.
 func (m *Map) IsExpired(c Cid) bool {
-	v, _ := m.Get(c)
+	v, found := m.Get(c)
+	if !found {
+		return false
+	}
 	return v.Expir != 0 && v.Expir <= uint64(time.Now().Unix())
 }
 
