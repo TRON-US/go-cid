@@ -19,6 +19,7 @@ var tCodecs = map[uint64]string{
 	Raw:                "raw",
 	DagProtobuf:        "protobuf",
 	DagCBOR:            "cbor",
+	Libp2pKey:          "libp2p-key",
 	GitRaw:             "git-raw",
 	EthBlock:           "eth-block",
 	EthBlockList:       "eth-block-list",
@@ -332,6 +333,41 @@ func TestNewPrefixV0(t *testing.T) {
 	if c1.Prefix() != c2.Prefix() {
 		t.Fatal("prefixes mismatch")
 	}
+
+}
+
+func TestInvalidV0Prefix(t *testing.T) {
+	tests := []Prefix{
+		{
+			MhType:   mh.SHA2_256,
+			MhLength: 31,
+		},
+		{
+			MhType:   mh.SHA2_256,
+			MhLength: 33,
+		},
+		{
+			MhType:   mh.SHA2_256,
+			MhLength: -2,
+		},
+		{
+			MhType:   mh.SHA2_512,
+			MhLength: 32,
+		},
+		{
+			MhType:   mh.SHA2_512,
+			MhLength: -1,
+		},
+	}
+
+	for i, p := range tests {
+		t.Log(i)
+		_, err := p.Sum([]byte("testdata"))
+		if err == nil {
+			t.Fatalf("should error (index %d)", i)
+		}
+	}
+
 }
 
 func TestPrefixRoundtrip(t *testing.T) {
@@ -512,5 +548,50 @@ func BenchmarkStringV1(b *testing.B) {
 	}
 	if count != 49*b.N {
 		b.FailNow()
+	}
+}
+
+func TestReadCidsFromBuffer(t *testing.T) {
+	cidstr := []string{
+		"bafkreie5qrjvaw64n4tjm6hbnm7fnqvcssfed4whsjqxzslbd3jwhsk3mm",
+		"Qmf5Qzp6nGBku7CEn2UQx4mgN8TW69YUok36DrGa6NN893",
+		"zb2rhZi1JR4eNc2jBGaRYJKYM8JEB4ovenym8L1CmFsRAytkz",
+	}
+
+	var cids []Cid
+	var buf []byte
+	for _, cs := range cidstr {
+		c, err := Decode(cs)
+		if err != nil {
+			t.Fatal(err)
+		}
+		cids = append(cids, c)
+		buf = append(buf, c.Bytes()...)
+	}
+
+	var cur int
+	for _, expc := range cids {
+		n, c, err := CidFromBytes(buf[cur:])
+		if err != nil {
+			t.Fatal(err)
+		}
+		if c != expc {
+			t.Fatal("cids mismatched")
+		}
+		cur += n
+	}
+	if cur != len(buf) {
+		t.Fatal("had trailing bytes")
+	}
+}
+
+func TestBadParse(t *testing.T) {
+	hash, err := mh.Sum([]byte("foobar"), mh.SHA3_256, -1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = Parse(hash)
+	if err == nil {
+		t.Fatal("expected to fail to parse an invalid CIDv1 CID")
 	}
 }
